@@ -60,6 +60,7 @@ public class PythonClientCodegen extends AbstractPythonCodegen implements Codege
     public static final String LAZY_IMPORTS = "lazyImports";
     public static final String BUILD_SYSTEM = "buildSystem";
     public static final String SUPPORT_HTTPX_SYNC = "supportHttpxSync";
+    public static final String COMPATIBLE_WITH_PYTHON_LEGACY = "compatibleWithPythonLegacy";
     // Snapshot of BaseModel's public API in the minimum supported Pydantic 2.11.
     // https://github.com/pydantic/pydantic/blob/v2.11.0/pydantic/main.py
     private static final Set<String> PYDANTIC_BASE_MODEL_MEMBER_NAMES = Set.of(
@@ -100,6 +101,7 @@ public class PythonClientCodegen extends AbstractPythonCodegen implements Codege
     @Setter protected String datetimeFormat = "%Y-%m-%dT%H:%M:%S.%f%z";
     @Setter protected String dateFormat = "%Y-%m-%d";
     @Setter protected boolean setEnsureAsciiToFalse = false;
+    @Setter protected boolean compatibleWithPythonLegacy = false;
 
     private String testFolder;
 
@@ -200,6 +202,11 @@ public class PythonClientCodegen extends AbstractPythonCodegen implements Codege
         cliOptions.add(CliOption.newBoolean(SUPPORT_HTTPX_SYNC, "Generate synchronous '_sync' variants of each API method (httpx library only). " +
                 "Each '_sync' method simply calls the corresponding async method and waits for its completion, " +
                 "so both synchronous and asynchronous methods are available from the same API class.").defaultValue(Boolean.FALSE.toString()));
+        cliOptions.add(CliOption.newBoolean(COMPATIBLE_WITH_PYTHON_LEGACY,
+                "Enable compatibility with python-legacy. Currently, generated model to_dict() emits every declared field, using None for missing attributes, " +
+                        "under public names by default and wire names with serialize=True. Container conversion is limited to immediate list elements and " +
+                        "dictionary values, matching python-legacy. JSON and request serialization remain unchanged.")
+                .defaultValue(Boolean.FALSE.toString()));
 
         supportedLibraries.put("urllib3", "urllib3-based client");
         supportedLibraries.put("asyncio", "asyncio-based client");
@@ -316,6 +323,12 @@ public class PythonClientCodegen extends AbstractPythonCodegen implements Codege
 
         if (additionalProperties.containsKey(LAZY_IMPORTS)) {
             additionalProperties.put(LAZY_IMPORTS, Boolean.valueOf(additionalProperties.get(LAZY_IMPORTS).toString()));
+        }
+
+        if (additionalProperties.containsKey(COMPATIBLE_WITH_PYTHON_LEGACY)) {
+            setCompatibleWithPythonLegacy(convertPropertyToBooleanAndWriteBack(COMPATIBLE_WITH_PYTHON_LEGACY));
+        } else {
+            additionalProperties.put(COMPATIBLE_WITH_PYTHON_LEGACY, compatibleWithPythonLegacy);
         }
 
         if (additionalProperties.containsKey(BUILD_SYSTEM)) {
